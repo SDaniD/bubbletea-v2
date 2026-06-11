@@ -39,8 +39,7 @@ export function initPaneResizer() {
 
 			// Update the sidebar's width
 			rightPane.style.width = `${newSidebarWidth}px`;
-			// Update the left pane's width
-			leftPane.style.width = `calc(100vw - ${newSidebarWidth}px)`;
+			document.documentElement.style.setProperty("--sidebar-width", `${newSidebarWidth}px`);
 		};
 
 		// Stop the drag when user lets go of the mouse

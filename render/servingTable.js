@@ -1,4 +1,4 @@
-import { drawBubbleTeaWithContext } from "./bubbleTeaRender.js";
+import { drawBubbleTeaWithContext } from "./bubbleTeaRender.js?v=20260610c";
 import { average, max, stringToHue } from "../utils/utils.js";
 import {
 	createGradient,
@@ -103,6 +103,8 @@ function drawCrossCuttingLayer({
 	// We place these cross-cutting items first, aligned to the right
 	const layerName = "Cross-cutting";
 	const layer_group = servingTableG.insert("g", ":first-child")
+		.attr("class", "layer-group")
+		.attr("data-layer-name", layerName)
 		.attr("x", 0)
 		.attr("y", 0);
 
@@ -191,6 +193,8 @@ function drawMainLayers({
 			if (items.length === 0) return;
 
 			const layer_group = servingTableG.insert("g", ":first-child")
+				.attr("class", "layer-group")
+				.attr("data-layer-name", layerName)
 				.attr("x", 0)
 				.attr("y", 0);
 

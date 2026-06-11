@@ -52,7 +52,7 @@ export function calculateLayoutDimensions(positions, bubbleRadius, padding) {
  */
 export function drawLayoutContainer(width, height, bubbleRadius, padding, fill, stroke) {
 	const bottomCornerRadius = 20;
-	const g = d3.create("svg:g");
+	const g = d3.create("svg:g").attr("class", "package-container");
 	g.append("rect")
 		.attr("x", padding / 2)
 		.attr("y", padding / 2)

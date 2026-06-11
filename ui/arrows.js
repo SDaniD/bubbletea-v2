@@ -1,9 +1,17 @@
 import { pkgDepsOf } from "../model/nodes.js";
-import { getTransformedPosition, bringToFront, moveAfter } from "../utils/domUtils.js";
+import { getTransformedPosition, bringToFront } from "../utils/domUtils.js";
 
 export const clearArrows = (sel) => () => {
 	const svg = d3.select(sel);
-	svg.selectAll(".dep-line").remove();
+	svg.selectAll(".dep-line, .dep-arrow").remove();
+}
+
+function placeLineBehindPackages(g, line) {
+	const firstPackage = g.select(".tea").node();
+	const lineNode = line.node();
+	if (firstPackage && lineNode && firstPackage.parentNode === lineNode.parentNode) {
+		firstPackage.parentNode.insertBefore(lineNode, firstPackage);
+	}
 }
 
 // Arrow renderer
@@ -26,6 +34,7 @@ export const displayArrows = (sel) => (node) => {
 	const thisCenter = getTransformedPosition(thisG);
 
 	g.selectAll(".dep-line").remove();
+	g.selectAll(".dep-arrow").remove();
 
 	// Draw outgoing arrows
 	outgoing.forEach(node => {
@@ -45,7 +54,7 @@ export const displayArrows = (sel) => (node) => {
 			// .attr("stroke-dasharray", "21, 7")
 			// .attr("stroke-dashoffset", 0);
 
-			moveAfter(targetG, line);
+			placeLineBehindPackages(g, line);
 		}
 	});
 
@@ -67,7 +76,7 @@ export const displayArrows = (sel) => (node) => {
 			// .attr("stroke-dasharray", "21, 7")
 			// .attr("stroke-dashoffset", 0);
 
-			moveAfter(sourceG, line);
+			placeLineBehindPackages(g, line);
 		}
 	});
 
@@ -87,7 +96,7 @@ export const displayArrows = (sel) => (node) => {
 				.attr('stroke-opacity', 0.6)
 				.attr('stroke', 'goldenrod');
 
-			moveAfter(sourceG, line);
+			placeLineBehindPackages(g, line);
 		}
 	});
 

@@ -1,8 +1,12 @@
 
-import { initPaneResizer } from './ui/resizer.js';  // if you have a pane resizer
-import { initFileUpload } from './ui/fileUpload.js'; // the module we just created
+import { initPaneResizer } from './ui/resizer.js?v=20260610c';  // if you have a pane resizer
+import { initFileUpload } from './ui/fileUpload.js?v=20260611a'; 
+import { initAnalyticsPanel } from './ui/analyticsPanel.js?v=20260611a';
+import { initReviewDiagramsPanel } from './ui/reviewDiagramsPanel.js?v=20260611a';
 
 document.addEventListener('DOMContentLoaded', () => {
 	initPaneResizer();
+	initAnalyticsPanel();
+	initReviewDiagramsPanel();
 	initFileUpload();
 });

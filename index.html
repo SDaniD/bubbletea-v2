@@ -6,7 +6,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>BubbleTea 2.0</title>
 	<link rel="icon" href="favicon.ico" />
-	<link rel="stylesheet" href="style.css">
+	<link rel="stylesheet" href="style.css?v=20260611a">
 </head>
 
 <body>
@@ -17,17 +17,36 @@
 			<img class="icon icon-download" src="assets/upload.png" alt="upload" />
 			<input type="file" id="file-selector" class="toolbutton" accept=".json" />
 		</button>
+		<button id="analytics-button" class="toolbutton" title="Project analytics">Analytics</button>
+		<button id="review-diagrams-button" class="toolbutton" title="Review diagrams">Diagrams</button>
 	</div>
 	
 	<div id="chart-container"></div>
 	<div id="tooltip" class="tooltip"></div>
+	<div id="analytics-panel" class="analytics-panel analytics-panel-collapsed">
+		<div class="analytics-menu" id="analytics-content"></div>
+	</div>
+	<div id="review-diagrams-panel" class="review-diagrams-panel review-diagrams-panel-collapsed">
+		<div id="review-diagrams-resizer" class="review-diagrams-resizer" title="Resize review diagrams"></div>
+		<div class="review-diagrams-header">
+			<strong>Review Diagrams</strong>
+			<span>Package risk matrix and layer coupling heatmap</span>
+		</div>
+		<div class="review-diagrams-content" id="review-diagrams-content"></div>
+	</div>
 	<div id="sidebar">
 		<div class="resizer"></div>
+		<div id="dependency-legend" class="dependency-legend" aria-label="Dependency color legend">
+			<div class="dependency-legend-title">Dependencies</div>
+			<div class="dependency-legend-row"><span class="legend-line legend-outgoing"></span> outgoing</div>
+			<div class="dependency-legend-row"><span class="legend-line legend-incoming"></span> incoming</div>
+			<div class="dependency-legend-row"><span class="legend-line legend-both"></span> bidirectional</div>
+		</div>
 		<div class="menu" id="info-panel"></div>
 	</div>
 
 	<script src="https://d3js.org/d3.v7.min.js"></script>
-	<script type="module" src="main.js"></script>
+	<script type="module" src="main.js?v=20260611a"></script>
 
 </body>
 

@@ -1,10 +1,12 @@
 import { createGraph, lift } from '../graph/graph.js';
-import { clearInfo, displayInfo } from './infoPanel.js';
-import { clearArrows, displayArrows } from './arrows.js';
+import { clearInfo, displayInfo } from './infoPanel.js?v=20260610c';
+import { clearArrows, displayArrows } from './arrows.js?v=20260610c';
 import { getBubbleTeaDataWithContext } from '../model/bubbleTeaData.js';
-import { drawServingTableWithContext } from '../render/servingTable.js';
+import { drawServingTableWithContext } from '../render/servingTable.js?v=20260610c';
 import { hideTooltip, showTooltip, updateTooltipPosition } from './tooltip.js';
 import { hueMap } from '../utils/utils.js';
+import { bindAnalyticsContext } from './analyticsPanel.js?v=20260611a';
+import { bindReviewDiagramsContext } from './reviewDiagramsPanel.js?v=20260611a';
 
 /**
  * initFileUpload:
@@ -60,28 +62,41 @@ function handleUrlParamFile(filename) {
  *     whether from a user-uploaded file or from URL param fetch.
  */
 function handleParsedData(jsonData, fileName) {
-	// Display the loaded filename in #filename
-	document.getElementById("filename").textContent = `BubbleTea 2.0 – ${fileName}`;
+	try {
+		// Display the loaded filename in #filename
+		document.getElementById("filename").textContent = `BubbleTea 2.0 – ${fileName}`;
 
-	// Clear old chart
-	const chartContainer = document.getElementById('chart-container');
-	chartContainer.innerHTML = "";
+		// Clear old chart
+		const chartContainer = document.getElementById('chart-container');
+		chartContainer.innerHTML = "";
 
-	// 1) Build the context & augment edges
-	const context = buildContext(jsonData);
+		// Normalize newer Arcana exports to the schema BubbleTea expects.
+		normalizeGraphSchema(jsonData);
 
-	// 2) Render the serving table
-	const servingTable = renderServingTable(context, chartContainer);
-	if (!servingTable) return;
+		// 1) Build the context & augment edges
+		const context = buildContext(jsonData);
 
-	// 3) Zoom & resize
-	const g = setupZoomAndResize(servingTable, chartContainer);
+		// 2) Render the serving table
+		const servingTable = renderServingTable(context, chartContainer);
+		if (!servingTable) {
+			alert("No renderable packages were found in this JSON file.");
+			return;
+		}
+		bindAnalyticsContext(context);
+		bindReviewDiagramsContext(context);
 
-	// 4) Selection interactions
-	setupSelectionInteractions(g, context);
+		// 3) Zoom & resize
+		const g = setupZoomAndResize(servingTable, chartContainer);
 
-	// 5) Tooltips
-	setupTooltips(context);
+		// 4) Selection interactions
+		setupSelectionInteractions(g, context);
+
+		// 5) Tooltips
+		setupTooltips(context);
+	} catch (err) {
+		console.error("BubbleTea render failed", err);
+		alert(`BubbleTea render failed: ${err?.message ?? err}`);
+	}
 }
 
 function handleFileUpload(event) {
@@ -125,6 +140,144 @@ function parseJSONData(rawText, fileName) {
 	return jsonData;
 }
 
+function normalizeGraphSchema(jsonData) {
+	const elements = jsonData?.elements;
+	if (!elements || !Array.isArray(elements.nodes) || !Array.isArray(elements.edges)) {
+		return;
+	}
+
+	const normalizeLayerName = (layer) => {
+		switch (layer) {
+			case "UI":
+				return "Presentation Layer";
+			case "Logic":
+				return "Service Layer";
+			case "Data":
+				return "Data Source Layer";
+			case "Domain":
+				return "Domain Layer";
+			case "Undetermined":
+				return "Undefined";
+			default:
+				return layer;
+		}
+	};
+
+	const stereotypeLayerMap = {
+		"Controller": "Presentation Layer",
+		"Interfacer": "Presentation Layer",
+		"User Interfacer": "Presentation Layer",
+		"Internal Interfacer": "Presentation Layer",
+		"External Interfacer": "Presentation Layer",
+		"Coordinator": "Service Layer",
+		"Service Provider": "Service Layer",
+		"Information Holder": "Domain Layer",
+		"Structurer": "Domain Layer"
+	};
+
+	const nodesById = new Map(elements.nodes.map(node => [node.data?.id, node]));
+	const edgeKeys = new Set(
+		elements.edges.map(edge => `${edge.data?.source}|${edge.data?.label}|${edge.data?.target}`)
+	);
+
+	const addLabel = (node, label) => {
+		if (!node?.data) return;
+		if (!Array.isArray(node.data.labels)) {
+			node.data.labels = [];
+		}
+		if (!node.data.labels.includes(label)) {
+			node.data.labels.push(label);
+		}
+	};
+
+	const addEdge = (source, target, label) => {
+		const key = `${source}|${label}|${target}`;
+		if (edgeKeys.has(key)) return;
+		edgeKeys.add(key);
+		elements.edges.push({
+			data: {
+				id: `${source}-${label}-${target}`,
+				source,
+				target,
+				label,
+				properties: { metaSrc: "bubbletea-normalized" }
+			}
+		});
+	};
+
+	const containsByFolder = new Map();
+	const declaresByFile = new Map();
+
+	elements.nodes.forEach(node => {
+		const labels = node.data?.labels ?? [];
+		if (labels.includes("Folder")) addLabel(node, "Container");
+		if (labels.includes("Type")) addLabel(node, "Structure");
+		if (node.data?.properties?.layer) {
+			node.data.properties.layer = normalizeLayerName(node.data.properties.layer);
+		}
+	});
+
+	elements.edges.forEach(edge => {
+		const { source, target, label } = edge.data ?? {};
+		if (!source || !target || !label) return;
+
+		if (label === "encapsulates") {
+			addEdge(source, target, "hasScript");
+		}
+
+		if (label === "contains") {
+			if (!containsByFolder.has(source)) {
+				containsByFolder.set(source, []);
+			}
+			containsByFolder.get(source).push(target);
+		}
+
+		if (label === "declares") {
+			if (!declaresByFile.has(source)) {
+				declaresByFile.set(source, []);
+			}
+			declaresByFile.get(source).push(target);
+		}
+
+		if (label === "encapsulates") {
+			const sourceNode = nodesById.get(source);
+			const targetNode = nodesById.get(target);
+			const sourceStereotype = sourceNode?.data?.properties?.roleStereotype;
+			const stereotypeLayer = stereotypeLayerMap[sourceStereotype];
+			const targetLayer = targetNode?.data?.properties?.layer;
+
+			if (targetNode?.data?.labels?.includes("Operation") && stereotypeLayer) {
+				const shouldOverride =
+					targetLayer === undefined ||
+					targetLayer === null ||
+					targetLayer === "Undefined" ||
+					targetLayer === "Undetermined" ||
+					(targetLayer === "Service Layer" && stereotypeLayer === "Presentation Layer");
+
+				if (shouldOverride) {
+					targetNode.data.properties = targetNode.data.properties ?? {};
+					targetNode.data.properties.layer = stereotypeLayer;
+				}
+			}
+		}
+	});
+
+	containsByFolder.forEach((children, folderId) => {
+		children.forEach(childId => {
+			const childNode = nodesById.get(childId);
+			if (!childNode?.data?.labels?.includes("File")) return;
+
+			const declaredTypes = declaresByFile.get(childId) ?? [];
+			declaredTypes.forEach(typeId => {
+				const typeNode = nodesById.get(typeId);
+				if (typeNode?.data?.labels?.includes("Structure")) {
+					addEdge(folderId, typeId, "contains");
+				}
+			});
+		});
+	});
+}
+
 /**
  * buildContext:
  *   - Takes the parsed JSON, merges 'invokes' + 'hasScript' => 'calls', creates the graph,
@@ -155,7 +308,7 @@ function buildContext(jsonData) {
 	const context = {
 		layers,
 		graph,
-		dispatcher: d3.dispatch("select","deselect","mouseover","mousemove","mouseout"),
+		dispatcher: d3.dispatch("select","deselect","layerselect","mouseover","mousemove","mouseout"),
 		lastSelection: null,
 
 		roleStereotypeHues: {
@@ -237,20 +390,37 @@ function setupDispatchers(context) {
 
 	context.dispatcher.on("select.viz", highlightSelection);
 	context.dispatcher.on("deselect.viz", removeHighlights);
+	context.dispatcher.on("layerselect.viz", highlightLayerSelection);
 
 	context.dispatcher.on("mouseover.tooltip", showTooltip("#tooltip"));
 	context.dispatcher.on("mousemove.tooltip", updateTooltipPosition("#tooltip"));
 	context.dispatcher.on("mouseout.tooltip", hideTooltip("#tooltip"));
 
 	function highlightSelection(_, ele) {
-		d3.select(context.lastSelection)?.attr("filter", null);
-		d3.select(ele).attr("filter", "url(#highlight)");
+		d3.select(context.lastSelection)
+			.attr("filter", null)
+			.classed("selected-node", false);
+		d3.select(ele)
+			.attr("filter", "url(#highlight)")
+			.classed("selected-node", true);
 		context.lastSelection = ele;
 	}
 
 	function removeHighlights() {
-		d3.select(context.lastSelection).attr("filter", null);
+		d3.select(context.lastSelection)
+			.attr("filter", null)
+			.classed("selected-node", false);
 		context.lastSelection = null;
+		d3.selectAll(".layer-group").classed("selected-layer-group", false);
+	}
+
+	function highlightLayerSelection(layerName) {
+		d3.selectAll(".layer-group").classed("selected-layer-group", false);
+		d3.selectAll(".layer-group")
+			.filter(function () {
+				return this.getAttribute("data-layer-name") === layerName;
+			})
+			.classed("selected-layer-group", true);
 	}
 }
 
@@ -333,20 +503,29 @@ function setupZoomAndResize(servingTable, chartContainer) {
 
 /**
  * setupSelectionInteractions:
- *   - Clears selection on background click, and handles bubble/tea selection clicks.
- *   - Clears highlight filters, removes dep-line, updates the info panel, etc.
+ *   - Clears selection when the user clicks the empty SVG background.
+ *   - Keeps package/class and layer clicks from bubbling into the background clear.
+ *   - Routes all selection changes through the shared dispatcher so the info panel,
+ *     dependency lines, analytics panel, and visual highlights stay synchronized.
  */
 function setupSelectionInteractions(g, context) {
-	
-	d3.select("#serving-table")
-		.on("click", function (event, d) {
-			context.dispatcher.call("deselect", event, d, this);
-		});
+	const svg = d3.select(g.node()?.ownerSVGElement);
+
+	svg.on("click.selectionBackground", function (event) {
+		if (event.defaultPrevented) return;
+		context.dispatcher.call("deselect", event, null, this);
+	});
 
 	d3.selectAll(".bubble, .tea")
-		.on("click", function (event, d) {
+		.on("click.selectionNode", function (event, d) {
 			event.stopPropagation();
 			context.dispatcher.call("select", event, d, this);
+		});
+
+	d3.selectAll(".layer-group")
+		.on("click.selectionLayer", function (event) {
+			event.stopPropagation();
+			context.dispatcher.call("layerselect", event, this.getAttribute("data-layer-name"), this);
 		});
 }
 

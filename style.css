@@ -54,6 +54,14 @@ body {
 	margin: 8px 6px;
 }
 
+.menu li.info-section-note {
+	list-style: none;
+	margin: -2px 2px 7px 2px;
+	color: #6b7280;
+	font-size: 0.9em;
+	line-height: 1.25;
+}
+
 .menu h2 {
 	font-size: 1.25em;
 }

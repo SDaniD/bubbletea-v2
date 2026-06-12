@@ -8,12 +8,40 @@ function isHighReviewPriority(pkg) {
 	return String(priorityLevel ?? "").toLowerCase() === "high";
 }
 
-function drawHighReviewPriorityMarker(g, padding) {
+function formatRatio(value) {
+	const number = Number(value);
+	return Number.isFinite(number) ? number.toFixed(2) : "n/a";
+}
+
+function highReviewPriorityTooltip(pkg) {
+	const level = String(pkg.property("architecture_review_priority_level") ?? "high");
+	const score = pkg.property("architecture_review_priority_score");
+	const classification = pkg.property("classification") || "unclassified";
+	const outgoingRatio = formatRatio(pkg.property("cross_layer_outgoing_dependency_ratio"));
+	const incomingRatio = formatRatio(pkg.property("cross_layer_incoming_dependency_ratio"));
+	const dependencyLayers = pkg.property("depends_on_distinct_layer_count") ?? 0;
+	const reason = pkg.property("architecture_review_priority_reason");
+	const scoreText = score !== undefined && score !== null && score !== ""
+		? ` ${score}/100`
+		: "";
+
+	return [
+		`${level[0]?.toUpperCase() ?? "H"}${level.slice(1)} ARPS${scoreText}: ${classification}`,
+		`cross-layer outgoing ratio ${outgoingRatio}`,
+		`cross-layer incoming ratio ${incomingRatio}`,
+		`${dependencyLayers} outgoing dependency layer(s)`,
+		reason ? `Reason: ${reason}` : ""
+	].filter(Boolean).join("; ");
+}
+
+function drawHighReviewPriorityMarker(g, pkg, padding) {
 	const marker = g.append("g")
 		.attr("class", "high-review-priority-marker")
 		.attr("transform", `translate(${padding / 2 + 2}, ${padding / 2 + 2})`)
 		.style("filter", "drop-shadow(0 0 2px rgba(0, 0, 0, 0.65))")
-		.style("pointer-events", "none");
+		.style("pointer-events", "all");
+
+	marker.append("title").text(highReviewPriorityTooltip(pkg));
 
 	marker.append("circle")
 		.attr("r", 10)
@@ -72,12 +100,14 @@ function classNeedsReview(pkg, clasz) {
 	return Boolean(clasz.property("class_review_hint"));
 }
 
-function drawClassReviewMarker(bubble) {
+function drawClassReviewMarker(bubble, clasz) {
 	const marker = bubble.append("g")
 		.attr("class", "class-review-marker")
 		.attr("transform", "translate(-9, -9)")
 		.style("filter", "drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.65))")
-		.style("pointer-events", "none");
+		.style("pointer-events", "all");
+
+	marker.append("title").text(clasz.property("class_review_hint") || "Class marked for review.");
 
 	marker.append("circle")
 		.attr("r", 7)
@@ -144,7 +174,7 @@ export function drawBubbleTeaWithContext(context) {
 			.datum(pkg);
 		g.node().appendChild(pkgG.node());
 		if (isHighReviewPriority(pkg)) {
-			drawHighReviewPriorityMarker(g, padding);
+			drawHighReviewPriorityMarker(g, pkg, padding);
 		}
 		// Sort and map bubble data to draw pie charts
 		data
@@ -153,7 +183,7 @@ export function drawBubbleTeaWithContext(context) {
 				const [xPos, yPos] = positions[index];
 				const bubble = drawBubble(d);
 				if (classNeedsReview(pkg, d.class)) {
-					drawClassReviewMarker(bubble);
+					drawClassReviewMarker(bubble, d.class);
 				}
 				g.node().appendChild(bubble.node());
 				d3.select(bubble.node())

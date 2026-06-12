@@ -1,8 +1,8 @@
 import { createGraph, lift } from '../graph/graph.js';
-import { clearInfo, displayInfo } from './infoPanel.js?v=20260610c';
+import { clearInfo, displayInfo } from './infoPanel.js?v=20260611b';
 import { clearArrows, displayArrows } from './arrows.js?v=20260610c';
 import { getBubbleTeaDataWithContext } from '../model/bubbleTeaData.js';
-import { drawServingTableWithContext } from '../render/servingTable.js?v=20260610c';
+import { drawServingTableWithContext } from '../render/servingTable.js?v=20260611a';
 import { hideTooltip, showTooltip, updateTooltipPosition } from './tooltip.js';
 import { hueMap } from '../utils/utils.js';
 import { bindAnalyticsContext } from './analyticsPanel.js?v=20260611a';

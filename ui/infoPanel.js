@@ -542,6 +542,15 @@ export const displayInfo = (context) => (sel) => (node) => {
 			.attr("class", "info-section-title")
 			.text(section.title);
 		const ul = details.append("ul");
+		if (section.title === "Architecture Review Priority") {
+			ul.append("li")
+				.attr("class", "info-section-note")
+				.text("ARPS levels: Low < 30, Medium 30-59, High >= 60.");
+		} else if (section.title === "LLM Architecture Explanation") {
+			ul.append("li")
+				.attr("class", "info-section-note")
+				.text("Generated from: classification, ARPS, package metrics, and dependency examples.");
+		}
 		section.properties.forEach(prop => renderProperty(ul, prop));
 	});
 }

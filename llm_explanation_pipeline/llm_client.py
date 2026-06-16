@@ -7,6 +7,7 @@ from .models import ClassReviewHint, ExplanationResult
 
 load_dotenv()
 
+# ==== LLM model ====
 DEFAULT_LLM_PROVIDER = "openai"
 DEFAULT_LLM_MODEL = "gpt-4o-mini"
 #DEFAULT_LLM_PROVIDER = "google"
